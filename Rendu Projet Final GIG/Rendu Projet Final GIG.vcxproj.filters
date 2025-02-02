@@ -53,9 +53,34 @@
     <ClInclude Include="Mat4.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="stb_image.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="vertex_shader.glsl" />
     <None Include="fragment_shader.glsl" />
+    <None Include="skybox_vertex.glsl" />
+    <None Include="skybox_fragment.glsl" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="textures\negx.jpg">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="textures\negy.jpg">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="textures\negz.jpg">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="textures\posx.jpg">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="textures\posy.jpg">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="textures\posz.jpg">
+      <Filter>Resource Files</Filter>
+    </Image>
   </ItemGroup>
 </Project>

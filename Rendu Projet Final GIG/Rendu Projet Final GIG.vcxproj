@@ -146,11 +146,22 @@
     <ClInclude Include="dependencies\include\KHR\khrplatform.h" />
     <ClInclude Include="Mat4.h" />
     <ClInclude Include="SceneControllerInput.h" />
+    <ClInclude Include="stb_image.h" />
     <ClInclude Include="Vector3.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="fragment_shader.glsl" />
+    <None Include="skybox_fragment.glsl" />
+    <None Include="skybox_vertex.glsl" />
     <None Include="vertex_shader.glsl" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="textures\negx.jpg" />
+    <Image Include="textures\negy.jpg" />
+    <Image Include="textures\negz.jpg" />
+    <Image Include="textures\posx.jpg" />
+    <Image Include="textures\posy.jpg" />
+    <Image Include="textures\posz.jpg" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -4,6 +4,10 @@
 #include <fstream>
 #include <sstream>
 #include <cmath>
+#include <vector>
+
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
 
 // Window resize callback
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
@@ -100,10 +104,10 @@ const float TABLE_WIDTH = 2.0f;
 const float TABLE_LENGTH = 1.5f;
 const float TABLE_HEIGHT = 0.1f;
 
-GLuint tableVAO, tableVBO, shaderProgram;
-Mat4 view, projection;
+GLuint tableVAO, tableVBO, tableEBO, shaderProgram;
 
-// Setup table top (3D rectangular prism)
+
+Mat4 view, projection;
 void setupTable()
 {
     float halfWidth = TABLE_WIDTH * 0.5f;
@@ -111,54 +115,459 @@ void setupTable()
     float thickness = TABLE_HEIGHT;
 
     float vertices[] = {
+        // Positions                 // Normals
+        // Top face (Y-up)
+        -halfWidth, thickness, -halfLength,   0.0f, 1.0f, 0.0f,
+         halfWidth, thickness, -halfLength,   0.0f, 1.0f, 0.0f,
+         halfWidth, thickness,  halfLength,   0.0f, 1.0f, 0.0f,
+        -halfWidth, thickness,  halfLength,   0.0f, 1.0f, 0.0f,
+
+        // Bottom face (Y-down)
+        -halfWidth, 0.0f, -halfLength,   0.0f, -1.0f, 0.0f,
+         halfWidth, 0.0f, -halfLength,   0.0f, -1.0f, 0.0f,
+         halfWidth, 0.0f,  halfLength,   0.0f, -1.0f, 0.0f,
+        -halfWidth, 0.0f,  halfLength,   0.0f, -1.0f, 0.0f,
+
+        // Front face (Z-forward)
+        -halfWidth, 0.0f, -halfLength,   0.0f, 0.0f, -1.0f,
+         halfWidth, 0.0f, -halfLength,   0.0f, 0.0f, -1.0f,
+         halfWidth, thickness, -halfLength,   0.0f, 0.0f, -1.0f,
+        -halfWidth, thickness, -halfLength,   0.0f, 0.0f, -1.0f,
+
+        // Back face (Z-backward)
+        -halfWidth, 0.0f, halfLength,   0.0f, 0.0f, 1.0f,
+         halfWidth, 0.0f, halfLength,   0.0f, 0.0f, 1.0f,
+         halfWidth, thickness, halfLength,   0.0f, 0.0f, 1.0f,
+        -halfWidth, thickness, halfLength,   0.0f, 0.0f, 1.0f,
+
+        // Left face (X-left)
+        -halfWidth, 0.0f, -halfLength,  -1.0f, 0.0f, 0.0f,
+        -halfWidth, 0.0f,  halfLength,  -1.0f, 0.0f, 0.0f,
+        -halfWidth, thickness,  halfLength,  -1.0f, 0.0f, 0.0f,
+        -halfWidth, thickness, -halfLength,  -1.0f, 0.0f, 0.0f,
+
+        // Right face (X-right)
+         halfWidth, 0.0f, -halfLength,  1.0f, 0.0f, 0.0f,
+         halfWidth, 0.0f,  halfLength,  1.0f, 0.0f, 0.0f,
+         halfWidth, thickness,  halfLength,  1.0f, 0.0f, 0.0f,
+         halfWidth, thickness, -halfLength,  1.0f, 0.0f, 0.0f
+    };
+
+    unsigned int indices[] = {
         // Top face
-        -halfWidth, thickness, -halfLength,   halfWidth, thickness, -halfLength,   halfWidth, thickness,  halfLength,
-        -halfWidth, thickness, -halfLength,   halfWidth, thickness,  halfLength,  -halfWidth, thickness,  halfLength,
+        0, 1, 2, 2, 3, 0,
 
         // Bottom face
-        -halfWidth, 0.0f, -halfLength,   halfWidth, 0.0f, -halfLength,   halfWidth, 0.0f,  halfLength,
-        -halfWidth, 0.0f, -halfLength,   halfWidth, 0.0f,  halfLength,  -halfWidth, 0.0f,  halfLength,
+        4, 5, 6, 6, 7, 4,
 
         // Front face
-        -halfWidth, 0.0f, -halfLength,   halfWidth, 0.0f, -halfLength,   halfWidth, thickness, -halfLength,
-        -halfWidth, 0.0f, -halfLength,   halfWidth, thickness, -halfLength,  -halfWidth, thickness, -halfLength,
+        8, 9, 10, 10, 11, 8,
 
         // Back face
-        -halfWidth, 0.0f,  halfLength,   halfWidth, 0.0f,  halfLength,   halfWidth, thickness,  halfLength,
-        -halfWidth, 0.0f,  halfLength,   halfWidth, thickness,  halfLength,  -halfWidth, thickness,  halfLength,
+        12, 13, 14, 14, 15, 12,
 
         // Left face
-        -halfWidth, 0.0f, -halfLength,  -halfWidth, 0.0f,  halfLength,  -halfWidth, thickness,  halfLength,
-        -halfWidth, 0.0f, -halfLength,  -halfWidth, thickness,  halfLength, -halfWidth, thickness, -halfLength,
+        16, 17, 18, 18, 19, 16,
 
         // Right face
-        halfWidth, 0.0f, -halfLength,  halfWidth, 0.0f,  halfLength,  halfWidth, thickness,  halfLength,
-        halfWidth, 0.0f, -halfLength,  halfWidth, thickness,  halfLength,  halfWidth, thickness, -halfLength
+        20, 21, 22, 22, 23, 20
     };
 
     glGenVertexArrays(1, &tableVAO);
     glGenBuffers(1, &tableVBO);
+    glGenBuffers(1, &tableEBO);
+
     glBindVertexArray(tableVAO);
+
     glBindBuffer(GL_ARRAY_BUFFER, tableVBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, tableEBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
+
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 }
 
-// Render the table
 void drawTable()
 {
     glUseProgram(shaderProgram);
-    glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "view"), 1, GL_FALSE, view.m);
-    glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "projection"), 1, GL_FALSE, projection.m);
+
+    GLuint viewLoc = glGetUniformLocation(shaderProgram, "view");
+    GLuint projLoc = glGetUniformLocation(shaderProgram, "projection");
+    GLuint modelLoc = glGetUniformLocation(shaderProgram, "model");
+    GLuint lightDirLoc = glGetUniformLocation(shaderProgram, "lightDir");
+    GLuint lightColorLoc = glGetUniformLocation(shaderProgram, "lightColor");
+    GLuint objectColorLoc = glGetUniformLocation(shaderProgram, "objectColor");
+
+    Mat4 model = Mat4::identity();
+    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, view.m);
+    glUniformMatrix4fv(projLoc, 1, GL_FALSE, projection.m);
+    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, model.m);
+
+    glUniform3f(lightDirLoc, -0.5f, -1.0f, -0.3f);
+    glUniform3f(lightColorLoc, 1.0f, 1.0f, 1.0f);
+    glUniform3f(objectColorLoc, 0.8f, 0.6f, 0.4f);
 
     glBindVertexArray(tableVAO);
-    glDrawArrays(GL_TRIANGLES, 0, 36);
+    glDrawElements(GL_TRIANGLES, 36 + 24, GL_UNSIGNED_INT, 0); // Now includes legs
 }
 
- int main()
+GLuint legsVAO, legsVBO, legsEBO;
+void setupLegs()
+{
+    float halfWidth = TABLE_WIDTH * 0.5f;
+    float halfLength = TABLE_LENGTH * 0.5f;
+    float legHeight = 1.0f;
+    float legThickness = 0.1f;
+
+    float xOffset = halfWidth - legThickness * 0.5f;
+    float zOffset = halfLength - legThickness * 0.5f;
+
+    float vertices[] = {
+        // Front-left leg
+        -xOffset, 0.0f, -zOffset,   0.0f, 0.0f, 1.0f,
+        -xOffset + legThickness, 0.0f, -zOffset,   0.0f, 0.0f, 1.0f,
+        -xOffset + legThickness, -legHeight, -zOffset,   0.0f, 0.0f, 1.0f,
+        -xOffset, -legHeight, -zOffset,   0.0f, 0.0f, 1.0f,
+
+        // Front-right leg
+         xOffset, 0.0f, -zOffset,   0.0f, 0.0f, 1.0f,
+         xOffset - legThickness, 0.0f, -zOffset,   0.0f, 0.0f, 1.0f,
+         xOffset - legThickness, -legHeight, -zOffset,   0.0f, 0.0f, 1.0f,
+         xOffset, -legHeight, -zOffset,   0.0f, 0.0f, 1.0f,
+
+         // Back-left leg
+         -xOffset, 0.0f,  zOffset,   0.0f, 0.0f, 1.0f,
+         -xOffset + legThickness, 0.0f,  zOffset,   0.0f, 0.0f, 1.0f,
+         -xOffset + legThickness, -legHeight,  zOffset,   0.0f, 0.0f, 1.0f,
+         -xOffset, -legHeight,  zOffset,   0.0f, 0.0f, 1.0f,
+
+         // Back-right leg
+          xOffset, 0.0f,  zOffset,   0.0f, 0.0f, 1.0f,
+          xOffset - legThickness, 0.0f,  zOffset,   0.0f, 0.0f, 1.0f,
+          xOffset - legThickness, -legHeight,  zOffset,   0.0f, 0.0f, 1.0f,
+          xOffset, -legHeight,  zOffset,   0.0f, 0.0f, 1.0f,
+    };
+
+    unsigned int indices[] = {
+        // Front-left leg
+        0, 1, 2, 2, 3, 0,
+        // Front-right leg
+        4, 5, 6, 6, 7, 4,
+        // Back-left leg
+        8, 9, 10, 10, 11, 8,
+        // Back-right leg
+        12, 13, 14, 14, 15, 12
+    };
+
+    glGenVertexArrays(1, &legsVAO);
+    glGenBuffers(1, &legsVBO);
+    glGenBuffers(1, &legsEBO);
+
+    glBindVertexArray(legsVAO);
+
+    glBindBuffer(GL_ARRAY_BUFFER, legsVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, legsEBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+}
+void drawLegs()
+{
+    glUseProgram(shaderProgram);
+
+    GLuint viewLoc = glGetUniformLocation(shaderProgram, "view");
+    GLuint projLoc = glGetUniformLocation(shaderProgram, "projection");
+    GLuint modelLoc = glGetUniformLocation(shaderProgram, "model");
+    GLuint lightDirLoc = glGetUniformLocation(shaderProgram, "lightDir");
+    GLuint lightColorLoc = glGetUniformLocation(shaderProgram, "lightColor");
+    GLuint objectColorLoc = glGetUniformLocation(shaderProgram, "objectColor");
+
+    Mat4 model = Mat4::identity();
+    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, view.m);
+    glUniformMatrix4fv(projLoc, 1, GL_FALSE, projection.m);
+    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, model.m);
+
+    glUniform3f(lightDirLoc, -0.5f, -1.0f, -0.3f);
+    glUniform3f(lightColorLoc, 1.0f, 1.0f, 1.0f);
+    glUniform3f(objectColorLoc, 0.8f, 0.6f, 0.4f); // Same as tabletop
+
+    glBindVertexArray(legsVAO);
+    glDrawElements(GL_TRIANGLES, 24, GL_UNSIGNED_INT, 0); // sIncreased index count to include all legs
+}
+
+GLuint groundVAO, groundVBO, groundEBO;
+void setupGround()
+{
+    float groundWidth = 10.0f;
+    float groundLength = 10.0f;
+    float groundThickness = 0.2f;
+    float groundY = -1.2f; // Position below the table legs
+
+    float halfWidth = groundWidth * 0.5f;
+    float halfLength = groundLength * 0.5f;
+    float halfThickness = groundThickness * 0.5f;
+
+    float vertices[] = {
+        // Positions                 // Normals
+        // Top face (Y-up)
+        -halfWidth, groundY, -halfLength,   0.0f, 1.0f, 0.0f,
+         halfWidth, groundY, -halfLength,   0.0f, 1.0f, 0.0f,
+         halfWidth, groundY,  halfLength,   0.0f, 1.0f, 0.0f,
+        -halfWidth, groundY,  halfLength,   0.0f, 1.0f, 0.0f,
+
+        // Bottom face (Y-down)
+        -halfWidth, groundY - groundThickness, -halfLength,   0.0f, -1.0f, 0.0f,
+         halfWidth, groundY - groundThickness, -halfLength,   0.0f, -1.0f, 0.0f,
+         halfWidth, groundY - groundThickness,  halfLength,   0.0f, -1.0f, 0.0f,
+        -halfWidth, groundY - groundThickness,  halfLength,   0.0f, -1.0f, 0.0f,
+
+        // Front face (Z-forward)
+        -halfWidth, groundY - groundThickness, -halfLength,   0.0f, 0.0f, -1.0f,
+         halfWidth, groundY - groundThickness, -halfLength,   0.0f, 0.0f, -1.0f,
+         halfWidth, groundY, -halfLength,   0.0f, 0.0f, -1.0f,
+        -halfWidth, groundY, -halfLength,   0.0f, 0.0f, -1.0f,
+
+        // Back face (Z-backward)
+        -halfWidth, groundY - groundThickness,  halfLength,   0.0f, 0.0f, 1.0f,
+         halfWidth, groundY - groundThickness,  halfLength,   0.0f, 0.0f, 1.0f,
+         halfWidth, groundY,  halfLength,   0.0f, 0.0f, 1.0f,
+        -halfWidth, groundY,  halfLength,   0.0f, 0.0f, 1.0f,
+
+        // Left face (X-left)
+        -halfWidth, groundY - groundThickness, -halfLength,  -1.0f, 0.0f, 0.0f,
+        -halfWidth, groundY - groundThickness,  halfLength,  -1.0f, 0.0f, 0.0f,
+        -halfWidth, groundY,  halfLength,  -1.0f, 0.0f, 0.0f,
+        -halfWidth, groundY, -halfLength,  -1.0f, 0.0f, 0.0f,
+
+        // Right face (X-right)
+         halfWidth, groundY - groundThickness, -halfLength,  1.0f, 0.0f, 0.0f,
+         halfWidth, groundY - groundThickness,  halfLength,  1.0f, 0.0f, 0.0f,
+         halfWidth, groundY,  halfLength,  1.0f, 0.0f, 0.0f,
+         halfWidth, groundY, -halfLength,  1.0f, 0.0f, 0.0f
+    };
+
+    unsigned int indices[] = {
+        // Top face
+        0, 1, 2, 2, 3, 0,
+        // Bottom face
+        4, 5, 6, 6, 7, 4,
+        // Front face
+        8, 9, 10, 10, 11, 8,
+        // Back face
+        12, 13, 14, 14, 15, 12,
+        // Left face
+        16, 17, 18, 18, 19, 16,
+        // Right face
+        20, 21, 22, 22, 23, 20
+    };
+
+    glGenVertexArrays(1, &groundVAO);
+    glGenBuffers(1, &groundVBO);
+    glGenBuffers(1, &groundEBO);
+
+    glBindVertexArray(groundVAO);
+
+    glBindBuffer(GL_ARRAY_BUFFER, groundVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, groundEBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+}
+void drawGround()
+{
+    glUseProgram(shaderProgram);
+
+    GLuint viewLoc = glGetUniformLocation(shaderProgram, "view");
+    GLuint projLoc = glGetUniformLocation(shaderProgram, "projection");
+    GLuint modelLoc = glGetUniformLocation(shaderProgram, "model");
+    GLuint lightDirLoc = glGetUniformLocation(shaderProgram, "lightDir");
+    GLuint lightColorLoc = glGetUniformLocation(shaderProgram, "lightColor");
+    GLuint objectColorLoc = glGetUniformLocation(shaderProgram, "objectColor");
+
+    Mat4 model = Mat4::identity();
+    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, view.m);
+    glUniformMatrix4fv(projLoc, 1, GL_FALSE, projection.m);
+    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, model.m);
+
+    glUniform3f(lightDirLoc, -0.5f, -1.0f, -0.3f);
+    glUniform3f(lightColorLoc, 1.0f, 1.0f, 1.0f);
+    glUniform3f(objectColorLoc, 0.4f, 0.3f, 0.2f); // Brownish floor color
+
+    glBindVertexArray(groundVAO);
+    glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+}
+
+
+GLuint skyboxVAO, skyboxVBO, skyboxTexture, skyboxShaderProgram;
+
+std::vector<std::string> skyboxFaces = {
+    "textures/posx.jpg",  // Right (+X)
+    "textures/negx.jpg",  // Left (-X)
+    "textures/posy.jpg",  // Top (+Y)
+    "textures/negy.jpg",  // Bottom (-Y)
+    "textures/posz.jpg",  // Front (+Z)
+    "textures/negz.jpg"   // Back (-Z)
+};
+
+
+
+GLuint loadCubemap(std::vector<std::string> faces)
+{
+    GLuint textureID;
+    glGenTextures(1, &textureID);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
+
+    int width, height, nrChannels;
+    for (unsigned int i = 0; i < faces.size(); i++)
+    {
+        unsigned char* data = stbi_load(faces[i].c_str(), &width, &height, &nrChannels, 0);
+        if (data)
+        {
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
+                0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+            stbi_image_free(data);
+        }
+        else
+        {
+            std::cout << "Failed to load cubemap texture: " << faces[i] << std::endl;
+            stbi_image_free(data);
+        }
+    }
+
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+    return textureID;
+}
+void setupSkybox()
+{
+    float skyboxVertices[] = {
+        -1.0f,  1.0f, -1.0f,
+        -1.0f, -1.0f, -1.0f,
+         1.0f, -1.0f, -1.0f,
+         1.0f, -1.0f, -1.0f,
+         1.0f,  1.0f, -1.0f,
+        -1.0f,  1.0f, -1.0f,
+
+        -1.0f, -1.0f,  1.0f,
+        -1.0f, -1.0f, -1.0f,
+        -1.0f,  1.0f, -1.0f,
+        -1.0f,  1.0f, -1.0f,
+        -1.0f,  1.0f,  1.0f,
+        -1.0f, -1.0f,  1.0f,
+
+         1.0f, -1.0f, -1.0f,
+         1.0f, -1.0f,  1.0f,
+         1.0f,  1.0f,  1.0f,
+         1.0f,  1.0f,  1.0f,
+         1.0f,  1.0f, -1.0f,
+         1.0f, -1.0f, -1.0f,
+
+        -1.0f, -1.0f,  1.0f,
+        -1.0f,  1.0f,  1.0f,
+         1.0f,  1.0f,  1.0f,
+         1.0f,  1.0f,  1.0f,
+         1.0f, -1.0f,  1.0f,
+        -1.0f, -1.0f,  1.0f,
+
+        -1.0f,  1.0f, -1.0f,
+         1.0f,  1.0f, -1.0f,
+         1.0f,  1.0f,  1.0f,
+         1.0f,  1.0f,  1.0f,
+        -1.0f,  1.0f,  1.0f,
+        -1.0f,  1.0f, -1.0f,
+
+        -1.0f, -1.0f, -1.0f,
+        -1.0f, -1.0f,  1.0f,
+         1.0f, -1.0f, -1.0f,
+         1.0f, -1.0f, -1.0f,
+        -1.0f, -1.0f,  1.0f,
+         1.0f, -1.0f,  1.0f
+    };
+
+    glGenVertexArrays(1, &skyboxVAO);
+    glGenBuffers(1, &skyboxVBO);
+    glBindVertexArray(skyboxVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, skyboxVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), &skyboxVertices, GL_STATIC_DRAW);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+
+    // Load skybox shader
+    skyboxShaderProgram = createShaderProgram("skybox_vertex.glsl", "skybox_fragment.glsl");
+
+    // Load cubemap textures
+    skyboxTexture = loadCubemap(skyboxFaces);
+}
+
+
+void drawSkybox()
+{
+    glDepthFunc(GL_LEQUAL);
+    glUseProgram(skyboxShaderProgram);
+
+    Mat4 viewNoTranslation = view;
+    viewNoTranslation.m[12] = 0.0f;
+    viewNoTranslation.m[13] = 0.0f;
+    viewNoTranslation.m[14] = 0.0f;
+
+    GLuint viewLoc = glGetUniformLocation(skyboxShaderProgram, "view");
+    GLuint projLoc = glGetUniformLocation(skyboxShaderProgram, "projection");
+
+    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, viewNoTranslation.m);
+    glUniformMatrix4fv(projLoc, 1, GL_FALSE, projection.m);
+
+    glBindVertexArray(skyboxVAO);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, skyboxTexture);
+    glDrawArrays(GL_TRIANGLES, 0, 36);
+
+    glDepthFunc(GL_LESS);
+}
+
+
+
+
+
+void drawScene()
+{
+    drawSkybox();
+    drawGround();
+    drawTable();
+    drawLegs();
+}
+
+
+
+int main()
 {
     if (!glfwInit())
         return -1;
@@ -187,6 +596,10 @@ void drawTable()
 
     // Setup scene
     setupTable();
+    setupLegs();
+    setupGround();
+    setupSkybox();
+
     view = Mat4::lookAt(0.0f, 2.0f, 5.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
     projection = Mat4::perspective(3.14159f / 4.0f, 1080.0f / 720.0f, 0.1f, 100.0f);
 
@@ -195,7 +608,7 @@ void drawTable()
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        drawTable();
+        drawScene();
 
         glfwSwapBuffers(window);
         glfwPollEvents();
