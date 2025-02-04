@@ -86,6 +86,17 @@ struct Mat4
         result.m[4] = s; result.m[5] = c;
         return result;
     }
+
+    static Mat4 scale(const Mat4& mat, float sx, float sy, float sz)
+    {
+        Mat4 result = mat;
+        result.m[0] *= sx;
+        result.m[5] *= sy;
+        result.m[10] *= sz;
+        return result;
+    }
+
+
 };
 
 #endif // MAT4_H

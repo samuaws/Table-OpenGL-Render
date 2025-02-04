@@ -5,10 +5,11 @@
 #include <sstream>
 #include <cmath>
 #include <vector>
+#include "ModelLoader.h"
+#include "stb_image.h"
 #include "Mat4.h"
 
-#define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
+
 
 // Window resize callback
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
@@ -527,324 +528,38 @@ void drawSkybox()
     glDepthFunc(GL_LESS);
 }
 
-GLuint lampBaseVAO, lampBaseVBO, lampBaseEBO;
-GLuint lampArmVAO, lampArmVBO, lampArmEBO;
-GLuint lampHeadVAO, lampHeadVBO, lampHeadEBO;
-GLuint lampConnectorVAO, lampConnectorVBO, lampConnectorEBO;
+ModelLoader modelLoader;
+Mesh lampMesh;
+GLuint lampShaderProgram;
+float lampScale = 0.3f;
 
-void setupLampBase()
+
+void setupLamp()
 {
-    const int segments = 32;
-    float radius = 0.3f;
-    float height = 0.02f;
-    std::vector<float> vertices;
-    std::vector<unsigned int> indices;
-
-    // Center vertex
-    vertices.push_back(0.0f);
-    vertices.push_back(height);
-    vertices.push_back(0.0f);
-
-    vertices.push_back(0.0f);
-    vertices.push_back(1.0f);
-    vertices.push_back(0.0f);  // Normal pointing up
-
-    // Outer circle
-    for (int i = 0; i <= segments; i++)
-    {
-        float angle = (2.0f * 3.14159f * i) / segments;
-        float x = cos(angle) * radius;
-        float z = sin(angle) * radius;
-
-        vertices.push_back(x);
-        vertices.push_back(height);
-        vertices.push_back(z);
-
-        vertices.push_back(0.0f);
-        vertices.push_back(1.0f);
-        vertices.push_back(0.0f);  // Normal pointing up
-
-        if (i > 0)
-        {
-            indices.push_back(0);
-            indices.push_back(i);
-            indices.push_back(i + 1);
-        }
-    }
-
-    glGenVertexArrays(1, &lampBaseVAO);
-    glGenBuffers(1, &lampBaseVBO);
-    glGenBuffers(1, &lampBaseEBO);
-
-    glBindVertexArray(lampBaseVAO);
-
-    glBindBuffer(GL_ARRAY_BUFFER, lampBaseVBO);
-    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_STATIC_DRAW);
-
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, lampBaseEBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), indices.data(), GL_STATIC_DRAW);
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
-    glEnableVertexAttribArray(1);
-
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);
-}
-
-void setupLampArm()
-{
-    const int segments = 16;
-    float radius = 0.05f;
-    float height = 0.4f;
-    std::vector<float> vertices;
-    std::vector<unsigned int> indices;
-
-    // Generate vertices for top and bottom circles
-    for (int i = 0; i <= segments; i++)
-    {
-        float angle = (2.0f * 3.14159f * i) / segments;
-        float x = cos(angle) * radius;
-        float z = sin(angle) * radius;
-
-        // Bottom circle
-        vertices.push_back(x);
-        vertices.push_back(0.0f);
-        vertices.push_back(z);
-        vertices.push_back(x);
-        vertices.push_back(0.0f);
-        vertices.push_back(z); // Normal
-
-        // Top circle
-        vertices.push_back(x);
-        vertices.push_back(height);
-        vertices.push_back(z);
-        vertices.push_back(x);
-        vertices.push_back(0.0f);
-        vertices.push_back(z); // Normal
-
-        if (i > 0)
-        {
-            int index = i * 2;
-            indices.push_back(index - 2);
-            indices.push_back(index);
-            indices.push_back(index - 1);
-
-            indices.push_back(index);
-            indices.push_back(index + 1);
-            indices.push_back(index - 1);
-        }
-    }
-
-    glGenVertexArrays(1, &lampArmVAO);
-    glGenBuffers(1, &lampArmVBO);
-    glGenBuffers(1, &lampArmEBO);
-
-    glBindVertexArray(lampArmVAO);
-
-    glBindBuffer(GL_ARRAY_BUFFER, lampArmVBO);
-    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_STATIC_DRAW);
-
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, lampArmEBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), indices.data(), GL_STATIC_DRAW);
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
-    glEnableVertexAttribArray(1);
-
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);
-}
-
-void setupLampHead()
-{
-    const int segments = 16;
-    float radius = 0.15f;
-    float height = 0.2f;
-    std::vector<float> vertices;
-    std::vector<unsigned int> indices;
-
-    // Tip of the cone
-    vertices.push_back(0.0f);
-    vertices.push_back(height);
-    vertices.push_back(0.0f);
-    vertices.push_back(0.0f);
-    vertices.push_back(1.0f);
-    vertices.push_back(0.0f);
-
-    // Base circle
-    for (int i = 0; i <= segments; i++)
-    {
-        float angle = (2.0f * 3.14159f * i) / segments;
-        float x = cos(angle) * radius;
-        float z = sin(angle) * radius;
-
-        vertices.push_back(x);
-        vertices.push_back(0.0f);
-        vertices.push_back(z);
-
-        vertices.push_back(0.0f);
-        vertices.push_back(-1.0f);
-        vertices.push_back(0.0f);
-
-        if (i > 0)
-        {
-            indices.push_back(0);
-            indices.push_back(i);
-            indices.push_back(i + 1);
-        }
-    }
-
-    glGenVertexArrays(1, &lampHeadVAO);
-    glGenBuffers(1, &lampHeadVBO);
-    glGenBuffers(1, &lampHeadEBO);
-
-    glBindVertexArray(lampHeadVAO);
-
-    glBindBuffer(GL_ARRAY_BUFFER, lampHeadVBO);
-    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_STATIC_DRAW);
-
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, lampHeadEBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), indices.data(), GL_STATIC_DRAW);
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
-    glEnableVertexAttribArray(1);
-
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);
-}
-void setupLampConnector()
-{
-    const int segments = 16;
-    const int rings = 16;
-    float radius = 0.06f; // Small ball to connect the two arms
-    std::vector<float> vertices;
-    std::vector<unsigned int> indices;
-
-    // Generate vertices for the sphere
-    for (int i = 0; i <= rings; i++)
-    {
-        float theta = (float)i / rings * 3.14159f;
-        float sinTheta = sinf(theta);
-        float cosTheta = cosf(theta);
-
-        for (int j = 0; j <= segments; j++)
-        {
-            float phi = (float)j / segments * 2.0f * 3.14159f;
-            float sinPhi = sinf(phi);
-            float cosPhi = cosf(phi);
-
-            float x = cosPhi * sinTheta;
-            float y = cosTheta;
-            float z = sinPhi * sinTheta;
-
-            vertices.push_back(radius * x);
-            vertices.push_back(radius * y);
-            vertices.push_back(radius * z);
-
-            vertices.push_back(x);
-            vertices.push_back(y);
-            vertices.push_back(z);
-        }
-    }
-
-    // Generate indices
-    for (int i = 0; i < rings; i++)
-    {
-        for (int j = 0; j < segments; j++)
-        {
-            int first = (i * (segments + 1)) + j;
-            int second = first + segments + 1;
-
-            indices.push_back(first);
-            indices.push_back(second);
-            indices.push_back(first + 1);
-
-            indices.push_back(second);
-            indices.push_back(second + 1);
-            indices.push_back(first + 1);
-        }
-    }
-
-    glGenVertexArrays(1, &lampConnectorVAO);
-    glGenBuffers(1, &lampConnectorVBO);
-    glGenBuffers(1, &lampConnectorEBO);
-
-    glBindVertexArray(lampConnectorVAO);
-
-    glBindBuffer(GL_ARRAY_BUFFER, lampConnectorVBO);
-    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_STATIC_DRAW);
-
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, lampConnectorEBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), indices.data(), GL_STATIC_DRAW);
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
-    glEnableVertexAttribArray(1);
-
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);
+    lampMesh = modelLoader.loadModel("models/det3FBX.fbx", "textures/Diffuse.jpg");
+    lampShaderProgram = createShaderProgram("lamp_vertex.glsl", "fragment_shader_tex.glsl");
 }
 
 void drawLamp()
 {
-    glUseProgram(shaderProgram);
+    glUseProgram(lampShaderProgram);
 
-    GLuint modelLoc = glGetUniformLocation(shaderProgram, "model");
-    GLuint objectColorLoc = glGetUniformLocation(shaderProgram, "objectColor");
+    GLuint modelLoc = glGetUniformLocation(lampShaderProgram, "model");
+    GLuint textureLoc = glGetUniformLocation(lampShaderProgram, "lampTexture");
 
-    glUniform3f(objectColorLoc, 0.5f, 0.5f, 0.5f);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, lampMesh.textureID);
+    glUniform1i(textureLoc, 0);
 
-    Mat4 lampModel = Mat4::identity();
+    Mat4 model = Mat4::identity();
+    model = Mat4::translate(model, 0.5f, TABLE_HEIGHT, 0.2f);
+    model = Mat4::scale(model, 0.3f, 0.3f, 0.3f); // Scale the lamp
 
-    // Move and rotate the entire lamp
-    lampModel = Mat4::translate(lampModel, 0.5f, TABLE_HEIGHT, 0.2f);
-    lampModel = Mat4::rotateY(lampModel, 90.0f);
-
-    Mat4 model;
-
-    // Draw Base (Disk)
-    model = lampModel;
     glUniformMatrix4fv(modelLoc, 1, GL_FALSE, model.m);
-    glBindVertexArray(lampBaseVAO);
-    glDrawElements(GL_TRIANGLES, 96, GL_UNSIGNED_INT, 0);
 
-    // Draw First Arm (Cylinder)
-    model = Mat4::translate(lampModel, 0.0f, 0.02f, 0.0f);
-    model = Mat4::rotateZ(model, -20.0f);
-    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, model.m);
-    glBindVertexArray(lampArmVAO);
-    glDrawElements(GL_TRIANGLES, 192, GL_UNSIGNED_INT, 0);
-
-    // Draw Connector Ball
-    model = Mat4::translate(model, 0.0f, 0.4f, 0.0f);
-    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, model.m);
-    glBindVertexArray(lampConnectorVAO);
-    glDrawElements(GL_TRIANGLES, 288, GL_UNSIGNED_INT, 0);
-
-    // Draw Second Arm (Cylinder) - Correcting Position
-    model = Mat4::rotateZ(model, -20.0f);
-    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, model.m);
-    glBindVertexArray(lampArmVAO);
-    glDrawElements(GL_TRIANGLES, 192, GL_UNSIGNED_INT, 0);
-
-    // Draw Head (Cone)
-    model = Mat4::translate(model, 0.0f, 0.4f, 0.0f);
-    model = Mat4::rotateZ(model, -30.0f);
-    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, model.m);
-    glBindVertexArray(lampHeadVAO);
-    glDrawElements(GL_TRIANGLES, 96, GL_UNSIGNED_INT, 0);
+    glBindVertexArray(lampMesh.VAO);
+    glDrawElements(GL_TRIANGLES, lampMesh.indices.size(), GL_UNSIGNED_INT, 0);
 }
-
 
 
 
@@ -856,8 +571,6 @@ void drawScene()
     drawLegs();
     drawLamp();
 }
-
-
 
 int main()
 {
@@ -890,10 +603,7 @@ int main()
     setupTable();
     setupLegs();
     setupGround();
-    setupLampBase();
-    setupLampConnector();
-    setupLampArm();
-    setupLampHead();
+    setupLamp();
     setupSkybox();
 
     view = setupCamera();
