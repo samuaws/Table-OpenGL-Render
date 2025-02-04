@@ -7,7 +7,6 @@ struct Mat4
 {
     float m[16];
 
-    // Identity matrix
     static Mat4 identity()
     {
         Mat4 result = {};
@@ -15,7 +14,6 @@ struct Mat4
         return result;
     }
 
-    // Perspective projection matrix
     static Mat4 perspective(float fov, float aspect, float near, float far)
     {
         Mat4 result = {};
@@ -28,7 +26,6 @@ struct Mat4
         return result;
     }
 
-    // LookAt matrix (Camera view transformation)
     static Mat4 lookAt(float eyeX, float eyeY, float eyeZ, float centerX, float centerY, float centerZ, float upX, float upY, float upZ)
     {
         float fx = centerX - eyeX, fy = centerY - eyeY, fz = centerZ - eyeZ;
@@ -50,6 +47,45 @@ struct Mat4
         result.m[14] = fx * eyeX + fy * eyeY + fz * eyeZ;
         return result;
     }
+
+    static Mat4 translate(const Mat4& mat, float x, float y, float z)
+    {
+        Mat4 result = mat;
+        result.m[12] += x;
+        result.m[13] += y;
+        result.m[14] += z;
+        return result;
+    }
+
+    static Mat4 rotateX(const Mat4& mat, float angle)
+    {
+        Mat4 result = mat;
+        float c = cosf(angle);
+        float s = sinf(angle);
+        result.m[5] = c; result.m[6] = -s;
+        result.m[9] = s; result.m[10] = c;
+        return result;
+    }
+
+    static Mat4 rotateY(const Mat4& mat, float angle)
+    {
+        Mat4 result = mat;
+        float c = cosf(angle);
+        float s = sinf(angle);
+        result.m[0] = c; result.m[2] = s;
+        result.m[8] = -s; result.m[10] = c;
+        return result;
+    }
+
+    static Mat4 rotateZ(const Mat4& mat, float angle)
+    {
+        Mat4 result = mat;
+        float c = cosf(angle);
+        float s = sinf(angle);
+        result.m[0] = c; result.m[1] = -s;
+        result.m[4] = s; result.m[5] = c;
+        return result;
+    }
 };
 
-#endif
+#endif // MAT4_H

@@ -5,6 +5,7 @@
 #include <sstream>
 #include <cmath>
 #include <vector>
+#include "Mat4.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
@@ -52,52 +53,25 @@ GLuint createShaderProgram(const char* vertexPath, const char* fragmentPath)
     return shaderProgram;
 }
 
-// Simple 4x4 Matrix
-struct Mat4
+
+
+Mat4 setupCamera()
 {
-    float m[16];
+    float eyeX = 0.0f;
+    float eyeY = 1.2f;  // Lowered the camera to 1.2 instead of 2.0
+    float eyeZ = 4.5f;  // Moved slightly closer to the table
 
-    static Mat4 identity()
-    {
-        Mat4 result = {};
-        result.m[0] = 1.0f; result.m[5] = 1.0f; result.m[10] = 1.0f; result.m[15] = 1.0f;
-        return result;
-    }
+    float centerX = 0.0f;
+    float centerY = 0.8f;  //  Looking slightly lower
+    float centerZ = 0.0f;
 
-    static Mat4 perspective(float fov, float aspect, float near, float far)
-    {
-        Mat4 result = {};
-        float tanHalfFov = tanf(fov * 0.5f);
-        result.m[0] = 1.0f / (aspect * tanHalfFov);
-        result.m[5] = 1.0f / tanHalfFov;
-        result.m[10] = -(far + near) / (far - near);
-        result.m[11] = -1.0f;
-        result.m[14] = -(2.0f * far * near) / (far - near);
-        return result;
-    }
+    float upX = 0.0f;
+    float upY = 1.0f;
+    float upZ = 0.0f;
 
-    static Mat4 lookAt(float eyeX, float eyeY, float eyeZ, float centerX, float centerY, float centerZ, float upX, float upY, float upZ)
-    {
-        float fx = centerX - eyeX, fy = centerY - eyeY, fz = centerZ - eyeZ;
-        float rlf = 1.0f / sqrtf(fx * fx + fy * fy + fz * fz);
-        fx *= rlf; fy *= rlf; fz *= rlf;
+    return Mat4::lookAt(eyeX, eyeY, eyeZ, centerX, centerY, centerZ, upX, upY, upZ);
+}
 
-        float sx = upY * fz - upZ * fy, sy = upZ * fx - upX * fz, sz = upX * fy - upY * fx;
-        float rls = 1.0f / sqrtf(sx * sx + sy * sy + sz * sz);
-        sx *= rls; sy *= rls; sz *= rls;
-
-        float ux = fy * sz - fz * sy, uy = fz * sx - fx * sz, uz = fx * sy - fy * sx;
-
-        Mat4 result = identity();
-        result.m[0] = sx; result.m[4] = sy; result.m[8] = sz;
-        result.m[1] = ux; result.m[5] = uy; result.m[9] = uz;
-        result.m[2] = -fx; result.m[6] = -fy; result.m[10] = -fz;
-        result.m[12] = -(sx * eyeX + sy * eyeY + sz * eyeZ);
-        result.m[13] = -(ux * eyeX + uy * eyeY + uz * eyeZ);
-        result.m[14] = fx * eyeX + fy * eyeY + fz * eyeZ;
-        return result;
-    }
-};
 
 // Scene variables
 const float TABLE_WIDTH = 2.0f;
@@ -553,6 +527,323 @@ void drawSkybox()
     glDepthFunc(GL_LESS);
 }
 
+GLuint lampBaseVAO, lampBaseVBO, lampBaseEBO;
+GLuint lampArmVAO, lampArmVBO, lampArmEBO;
+GLuint lampHeadVAO, lampHeadVBO, lampHeadEBO;
+GLuint lampConnectorVAO, lampConnectorVBO, lampConnectorEBO;
+
+void setupLampBase()
+{
+    const int segments = 32;
+    float radius = 0.3f;
+    float height = 0.02f;
+    std::vector<float> vertices;
+    std::vector<unsigned int> indices;
+
+    // Center vertex
+    vertices.push_back(0.0f);
+    vertices.push_back(height);
+    vertices.push_back(0.0f);
+
+    vertices.push_back(0.0f);
+    vertices.push_back(1.0f);
+    vertices.push_back(0.0f);  // Normal pointing up
+
+    // Outer circle
+    for (int i = 0; i <= segments; i++)
+    {
+        float angle = (2.0f * 3.14159f * i) / segments;
+        float x = cos(angle) * radius;
+        float z = sin(angle) * radius;
+
+        vertices.push_back(x);
+        vertices.push_back(height);
+        vertices.push_back(z);
+
+        vertices.push_back(0.0f);
+        vertices.push_back(1.0f);
+        vertices.push_back(0.0f);  // Normal pointing up
+
+        if (i > 0)
+        {
+            indices.push_back(0);
+            indices.push_back(i);
+            indices.push_back(i + 1);
+        }
+    }
+
+    glGenVertexArrays(1, &lampBaseVAO);
+    glGenBuffers(1, &lampBaseVBO);
+    glGenBuffers(1, &lampBaseEBO);
+
+    glBindVertexArray(lampBaseVAO);
+
+    glBindBuffer(GL_ARRAY_BUFFER, lampBaseVBO);
+    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_STATIC_DRAW);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, lampBaseEBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), indices.data(), GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+}
+
+void setupLampArm()
+{
+    const int segments = 16;
+    float radius = 0.05f;
+    float height = 0.4f;
+    std::vector<float> vertices;
+    std::vector<unsigned int> indices;
+
+    // Generate vertices for top and bottom circles
+    for (int i = 0; i <= segments; i++)
+    {
+        float angle = (2.0f * 3.14159f * i) / segments;
+        float x = cos(angle) * radius;
+        float z = sin(angle) * radius;
+
+        // Bottom circle
+        vertices.push_back(x);
+        vertices.push_back(0.0f);
+        vertices.push_back(z);
+        vertices.push_back(x);
+        vertices.push_back(0.0f);
+        vertices.push_back(z); // Normal
+
+        // Top circle
+        vertices.push_back(x);
+        vertices.push_back(height);
+        vertices.push_back(z);
+        vertices.push_back(x);
+        vertices.push_back(0.0f);
+        vertices.push_back(z); // Normal
+
+        if (i > 0)
+        {
+            int index = i * 2;
+            indices.push_back(index - 2);
+            indices.push_back(index);
+            indices.push_back(index - 1);
+
+            indices.push_back(index);
+            indices.push_back(index + 1);
+            indices.push_back(index - 1);
+        }
+    }
+
+    glGenVertexArrays(1, &lampArmVAO);
+    glGenBuffers(1, &lampArmVBO);
+    glGenBuffers(1, &lampArmEBO);
+
+    glBindVertexArray(lampArmVAO);
+
+    glBindBuffer(GL_ARRAY_BUFFER, lampArmVBO);
+    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_STATIC_DRAW);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, lampArmEBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), indices.data(), GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+}
+
+void setupLampHead()
+{
+    const int segments = 16;
+    float radius = 0.15f;
+    float height = 0.2f;
+    std::vector<float> vertices;
+    std::vector<unsigned int> indices;
+
+    // Tip of the cone
+    vertices.push_back(0.0f);
+    vertices.push_back(height);
+    vertices.push_back(0.0f);
+    vertices.push_back(0.0f);
+    vertices.push_back(1.0f);
+    vertices.push_back(0.0f);
+
+    // Base circle
+    for (int i = 0; i <= segments; i++)
+    {
+        float angle = (2.0f * 3.14159f * i) / segments;
+        float x = cos(angle) * radius;
+        float z = sin(angle) * radius;
+
+        vertices.push_back(x);
+        vertices.push_back(0.0f);
+        vertices.push_back(z);
+
+        vertices.push_back(0.0f);
+        vertices.push_back(-1.0f);
+        vertices.push_back(0.0f);
+
+        if (i > 0)
+        {
+            indices.push_back(0);
+            indices.push_back(i);
+            indices.push_back(i + 1);
+        }
+    }
+
+    glGenVertexArrays(1, &lampHeadVAO);
+    glGenBuffers(1, &lampHeadVBO);
+    glGenBuffers(1, &lampHeadEBO);
+
+    glBindVertexArray(lampHeadVAO);
+
+    glBindBuffer(GL_ARRAY_BUFFER, lampHeadVBO);
+    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_STATIC_DRAW);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, lampHeadEBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), indices.data(), GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+}
+void setupLampConnector()
+{
+    const int segments = 16;
+    const int rings = 16;
+    float radius = 0.06f; // Small ball to connect the two arms
+    std::vector<float> vertices;
+    std::vector<unsigned int> indices;
+
+    // Generate vertices for the sphere
+    for (int i = 0; i <= rings; i++)
+    {
+        float theta = (float)i / rings * 3.14159f;
+        float sinTheta = sinf(theta);
+        float cosTheta = cosf(theta);
+
+        for (int j = 0; j <= segments; j++)
+        {
+            float phi = (float)j / segments * 2.0f * 3.14159f;
+            float sinPhi = sinf(phi);
+            float cosPhi = cosf(phi);
+
+            float x = cosPhi * sinTheta;
+            float y = cosTheta;
+            float z = sinPhi * sinTheta;
+
+            vertices.push_back(radius * x);
+            vertices.push_back(radius * y);
+            vertices.push_back(radius * z);
+
+            vertices.push_back(x);
+            vertices.push_back(y);
+            vertices.push_back(z);
+        }
+    }
+
+    // Generate indices
+    for (int i = 0; i < rings; i++)
+    {
+        for (int j = 0; j < segments; j++)
+        {
+            int first = (i * (segments + 1)) + j;
+            int second = first + segments + 1;
+
+            indices.push_back(first);
+            indices.push_back(second);
+            indices.push_back(first + 1);
+
+            indices.push_back(second);
+            indices.push_back(second + 1);
+            indices.push_back(first + 1);
+        }
+    }
+
+    glGenVertexArrays(1, &lampConnectorVAO);
+    glGenBuffers(1, &lampConnectorVBO);
+    glGenBuffers(1, &lampConnectorEBO);
+
+    glBindVertexArray(lampConnectorVAO);
+
+    glBindBuffer(GL_ARRAY_BUFFER, lampConnectorVBO);
+    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_STATIC_DRAW);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, lampConnectorEBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), indices.data(), GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+}
+
+void drawLamp()
+{
+    glUseProgram(shaderProgram);
+
+    GLuint modelLoc = glGetUniformLocation(shaderProgram, "model");
+    GLuint objectColorLoc = glGetUniformLocation(shaderProgram, "objectColor");
+
+    glUniform3f(objectColorLoc, 0.5f, 0.5f, 0.5f);
+
+    Mat4 lampModel = Mat4::identity();
+
+    // Move and rotate the entire lamp
+    lampModel = Mat4::translate(lampModel, 0.5f, TABLE_HEIGHT, 0.2f);
+    lampModel = Mat4::rotateY(lampModel, 90.0f);
+
+    Mat4 model;
+
+    // Draw Base (Disk)
+    model = lampModel;
+    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, model.m);
+    glBindVertexArray(lampBaseVAO);
+    glDrawElements(GL_TRIANGLES, 96, GL_UNSIGNED_INT, 0);
+
+    // Draw First Arm (Cylinder)
+    model = Mat4::translate(lampModel, 0.0f, 0.02f, 0.0f);
+    model = Mat4::rotateZ(model, -20.0f);
+    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, model.m);
+    glBindVertexArray(lampArmVAO);
+    glDrawElements(GL_TRIANGLES, 192, GL_UNSIGNED_INT, 0);
+
+    // Draw Connector Ball
+    model = Mat4::translate(model, 0.0f, 0.4f, 0.0f);
+    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, model.m);
+    glBindVertexArray(lampConnectorVAO);
+    glDrawElements(GL_TRIANGLES, 288, GL_UNSIGNED_INT, 0);
+
+    // Draw Second Arm (Cylinder) - Correcting Position
+    model = Mat4::rotateZ(model, -20.0f);
+    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, model.m);
+    glBindVertexArray(lampArmVAO);
+    glDrawElements(GL_TRIANGLES, 192, GL_UNSIGNED_INT, 0);
+
+    // Draw Head (Cone)
+    model = Mat4::translate(model, 0.0f, 0.4f, 0.0f);
+    model = Mat4::rotateZ(model, -30.0f);
+    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, model.m);
+    glBindVertexArray(lampHeadVAO);
+    glDrawElements(GL_TRIANGLES, 96, GL_UNSIGNED_INT, 0);
+}
 
 
 
@@ -563,6 +854,7 @@ void drawScene()
     drawGround();
     drawTable();
     drawLegs();
+    drawLamp();
 }
 
 
@@ -598,9 +890,13 @@ int main()
     setupTable();
     setupLegs();
     setupGround();
+    setupLampBase();
+    setupLampConnector();
+    setupLampArm();
+    setupLampHead();
     setupSkybox();
 
-    view = Mat4::lookAt(0.0f, 2.0f, 5.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
+    view = setupCamera();
     projection = Mat4::perspective(3.14159f / 4.0f, 1080.0f / 720.0f, 0.1f, 100.0f);
 
     while (!glfwWindowShouldClose(window))
