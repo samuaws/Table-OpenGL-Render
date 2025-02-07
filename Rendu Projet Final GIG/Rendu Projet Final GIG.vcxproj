@@ -233,6 +233,8 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="assimp-vc143-mt.dll" />
+    <None Include="ball_fragment.glsl" />
+    <None Include="ball_vertex.glsl" />
     <None Include="dependencies\include\assimp\color4.inl" />
     <None Include="dependencies\include\assimp\material.inl" />
     <None Include="dependencies\include\assimp\matrix3x3.inl" />

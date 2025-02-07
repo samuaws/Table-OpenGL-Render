@@ -182,6 +182,8 @@ void drawTable()
     GLuint objectColorLoc = glGetUniformLocation(shaderProgram, "objectColor");
 
     Mat4 model = Mat4::identity();
+    model = Mat4::translate(model, -1.5f, 0.0f, -1.0f); // Move table to the right
+
     glUniformMatrix4fv(viewLoc, 1, GL_FALSE, view.m);
     glUniformMatrix4fv(projLoc, 1, GL_FALSE, projection.m);
     glUniformMatrix4fv(modelLoc, 1, GL_FALSE, model.m);
@@ -191,8 +193,10 @@ void drawTable()
     glUniform3f(objectColorLoc, 0.8f, 0.6f, 0.4f);
 
     glBindVertexArray(tableVAO);
-    glDrawElements(GL_TRIANGLES, 36 + 24, GL_UNSIGNED_INT, 0); // Now includes legs
+    glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
 }
+
+
 
 GLuint legsVAO, legsVBO, legsEBO;
 void setupLegs()
@@ -263,6 +267,7 @@ void setupLegs()
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 }
+
 void drawLegs()
 {
     glUseProgram(shaderProgram);
@@ -275,6 +280,8 @@ void drawLegs()
     GLuint objectColorLoc = glGetUniformLocation(shaderProgram, "objectColor");
 
     Mat4 model = Mat4::identity();
+    model = Mat4::translate(model, -1.5f, 0.0f, -1.0f); // Move legs to match table
+
     glUniformMatrix4fv(viewLoc, 1, GL_FALSE, view.m);
     glUniformMatrix4fv(projLoc, 1, GL_FALSE, projection.m);
     glUniformMatrix4fv(modelLoc, 1, GL_FALSE, model.m);
@@ -284,13 +291,14 @@ void drawLegs()
     glUniform3f(objectColorLoc, 0.8f, 0.6f, 0.4f); // Same as tabletop
 
     glBindVertexArray(legsVAO);
-    glDrawElements(GL_TRIANGLES, 24, GL_UNSIGNED_INT, 0); // sIncreased index count to include all legs
+    glDrawElements(GL_TRIANGLES, 24, GL_UNSIGNED_INT, 0);
 }
+
 
 GLuint groundVAO, groundVBO, groundEBO;
 void setupGround()
 {
-    float groundWidth = 10.0f;
+    float groundWidth = 14.0f;
     float groundLength = 10.0f;
     float groundThickness = 0.2f;
     float groundY = -1.2f; // Position below the table legs
@@ -561,6 +569,210 @@ void drawLamp()
     glDrawElements(GL_TRIANGLES, lampMesh.indices.size(), GL_UNSIGNED_INT, 0);
 }
 
+GLuint ballVAO, ballVBO, ballEBO;
+GLuint ballShaderProgram;
+
+void setupBall()
+{
+    const int segments = 8;
+    const int rings = 8;
+    float radius = 0.2f;
+    std::vector<float> vertices;
+    std::vector<unsigned int> indices;
+
+    for (int i = 0; i <= rings; i++)
+    {
+        float theta = (float)i / rings * 3.14159f;
+        float sinTheta = sinf(theta);
+        float cosTheta = cosf(theta);
+
+        for (int j = 0; j <= segments; j++)
+        {
+            float phi = (float)j / segments * 2.0f * 3.14159f;
+            float sinPhi = sinf(phi);
+            float cosPhi = cosf(phi);
+
+            float x = cosPhi * sinTheta;
+            float y = cosTheta;
+            float z = sinPhi * sinTheta;
+
+            vertices.push_back(radius * x);
+            vertices.push_back(radius * y);
+            vertices.push_back(radius * z);
+
+            vertices.push_back(x);
+            vertices.push_back(y);
+            vertices.push_back(z);
+        }
+    }
+
+    for (int i = 0; i < rings; i++)
+    {
+        for (int j = 0; j < segments; j++)
+        {
+            int first = (i * (segments + 1)) + j;
+            int second = first + segments + 1;
+
+            indices.push_back(first);
+            indices.push_back(second);
+            indices.push_back(first + 1);
+
+            indices.push_back(second);
+            indices.push_back(second + 1);
+            indices.push_back(first + 1);
+        }
+    }
+
+    glGenVertexArrays(1, &ballVAO);
+    glGenBuffers(1, &ballVBO);
+    glGenBuffers(1, &ballEBO);
+
+    glBindVertexArray(ballVAO);
+
+    glBindBuffer(GL_ARRAY_BUFFER, ballVBO);
+    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_STATIC_DRAW);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ballEBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), indices.data(), GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+
+    ballShaderProgram = createShaderProgram("ball_vertex.glsl", "ball_fragment.glsl");
+}
+void drawBall()
+{
+    glUseProgram(ballShaderProgram);
+
+    GLuint modelLoc = glGetUniformLocation(ballShaderProgram, "model");
+    GLuint viewLoc = glGetUniformLocation(ballShaderProgram, "view");
+    GLuint projLoc = glGetUniformLocation(ballShaderProgram, "projection");
+    GLuint cameraPosLoc = glGetUniformLocation(ballShaderProgram, "cameraPos");
+
+    Mat4 model = Mat4::identity();
+    model = Mat4::translate(model, -1.0f, 0.5f, 0.5f);
+
+    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, model.m);
+    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, view.m);
+    glUniformMatrix4fv(projLoc, 1, GL_FALSE, projection.m);
+    
+    float eyeX = 0.0f;
+    float eyeY = 1.2f;  // Lowered the camera to 1.2 instead of 2.0
+    float eyeZ = 4.5f;  // Moved slightly closer to the table
+
+    glUniform3f(cameraPosLoc, eyeX, eyeY, eyeZ); // Pass camera position
+
+    glBindVertexArray(ballVAO);
+    glDrawElements(GL_TRIANGLES, 288, GL_UNSIGNED_INT, 0);
+}
+
+const float WALL_WIDTH = 10.0f;
+const float WALL_HEIGHT = 5.0f;
+const float WALL_THICKNESS = 0.1f;
+const float WINDOW_WIDTH = 1.5f;
+const float WINDOW_HEIGHT = 1.2f;
+
+GLuint wallVAO, wallVBO, wallEBO;
+
+void setupWall()
+{
+    float hw = WALL_WIDTH * 0.5f;
+    float hh = WALL_HEIGHT * 0.5f;
+    float ht = WALL_THICKNESS * 0.5f;
+    float hw_win = WINDOW_WIDTH * 1.5f;
+    float hh_win = WINDOW_HEIGHT * 0.7f;
+
+    float vertices[] = {
+        // Left Part
+        -hw, -hh, ht,  0.0f, 0.0f, 1.0f,
+        -hw_win, -hh, ht,  0.0f, 0.0f, 1.0f,
+        -hw, hh, ht,  0.0f, 0.0f, 1.0f,
+        -hw_win, hh_win, ht,  0.0f, 0.0f, 1.0f,
+
+        // Right Part
+        hw_win, -hh, ht,  0.0f, 0.0f, 1.0f,
+        hw, -hh, ht,  0.0f, 0.0f, 1.0f,
+        hw_win, hh_win, ht,  0.0f, 0.0f, 1.0f,
+        hw, hh, ht,  0.0f, 0.0f, 1.0f,
+
+        // Bottom Middle Part
+        -hw_win, -hh, ht,  0.0f, 0.0f, 1.0f,
+        hw_win, -hh, ht,  0.0f, 0.0f, 1.0f,
+        -hw_win, -hh_win, ht,  0.0f, 0.0f, 1.0f,
+        hw_win, -hh_win, ht,  0.0f, 0.0f, 1.0f,
+
+        // New Single Top Part (covers everything above the window)
+        -hw, hh_win, ht,  0.0f, 0.0f, 1.0f,
+        hw, hh_win, ht,  0.0f, 0.0f, 1.0f,
+        -hw, hh, ht,  0.0f, 0.0f, 1.0f,
+        hw, hh, ht,  0.0f, 0.0f, 1.0f,
+    };
+
+    unsigned int indices[] = {
+        0, 1, 2,  1, 3, 2,  // Left Part
+        4, 5, 6,  5, 7, 6,  // Right Part
+        8, 9, 10,  9, 11, 10, // Bottom Middle Part
+        12, 13, 14,  13, 15, 14  // New Single Top Part
+    };
+
+    glGenVertexArrays(1, &wallVAO);
+    glGenBuffers(1, &wallVBO);
+    glGenBuffers(1, &wallEBO);
+
+    glBindVertexArray(wallVAO);
+
+    glBindBuffer(GL_ARRAY_BUFFER, wallVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, wallEBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+}
+
+void drawWall()
+{
+    glUseProgram(shaderProgram);
+
+    GLuint modelLoc = glGetUniformLocation(shaderProgram, "model");
+    GLuint viewLoc = glGetUniformLocation(shaderProgram, "view");
+    GLuint projLoc = glGetUniformLocation(shaderProgram, "projection");
+    GLuint lightDirLoc = glGetUniformLocation(shaderProgram, "lightDir");
+    GLuint lightColorLoc = glGetUniformLocation(shaderProgram, "lightColor");
+    GLuint objectColorLoc = glGetUniformLocation(shaderProgram, "objectColor");
+
+
+    Mat4 model = Mat4::identity();
+    model = Mat4::translate(model, 0.0f, WALL_HEIGHT * 0.5f - 1.0f, -2.5f); // Position the wall
+
+
+    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, view.m);
+    glUniformMatrix4fv(projLoc, 1, GL_FALSE, projection.m);
+    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, model.m);
+
+    glUniform3f(lightDirLoc, -0.5f, -1.0f, -0.3f);
+    glUniform3f(lightColorLoc, 1.0f, 1.0f, 1.0f);
+    glUniform3f(objectColorLoc, 0.4f, 0.3f, 0.2f); // Brownish floor color
+
+    glBindVertexArray(wallVAO);
+    glDrawElements(GL_TRIANGLES, 24, GL_UNSIGNED_INT, 0);
+}
+
+
+
 
 
 void drawScene()
@@ -570,6 +782,8 @@ void drawScene()
     drawTable();
     drawLegs();
     drawLamp();
+    drawBall();
+    drawWall();
 }
 
 int main()
@@ -604,6 +818,8 @@ int main()
     setupLegs();
     setupGround();
     setupLamp();
+    setupBall();
+    setupWall();
     setupSkybox();
 
     view = setupCamera();

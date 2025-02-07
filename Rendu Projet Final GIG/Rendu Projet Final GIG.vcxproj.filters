@@ -338,6 +338,8 @@
     <None Include="models\det3FBX.fbx" />
     <None Include="lamp_vertex.glsl" />
     <None Include="assimp-vc143-mt.dll" />
+    <None Include="ball_vertex.glsl" />
+    <None Include="ball_fragment.glsl" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="textures\negx.jpg">
