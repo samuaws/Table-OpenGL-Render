@@ -196,6 +196,31 @@ void drawTable()
     glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
 }
 
+void drawTable2()
+{
+    glUseProgram(shaderProgram);
+
+    GLuint viewLoc = glGetUniformLocation(shaderProgram, "view");
+    GLuint projLoc = glGetUniformLocation(shaderProgram, "projection");
+    GLuint modelLoc = glGetUniformLocation(shaderProgram, "model");
+    GLuint lightDirLoc = glGetUniformLocation(shaderProgram, "lightDir");
+    GLuint lightColorLoc = glGetUniformLocation(shaderProgram, "lightColor");
+    GLuint objectColorLoc = glGetUniformLocation(shaderProgram, "objectColor");
+
+    Mat4 model = Mat4::identity();
+    model = Mat4::translate(model, 1.5f, 0.0f, -1.0f); // Move table to the right
+
+    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, view.m);
+    glUniformMatrix4fv(projLoc, 1, GL_FALSE, projection.m);
+    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, model.m);
+
+    glUniform3f(lightDirLoc, -0.5f, -1.0f, -0.3f);
+    glUniform3f(lightColorLoc, 1.0f, 1.0f, 1.0f);
+    glUniform3f(objectColorLoc, 0.8f, 0.6f, 0.4f);
+
+    glBindVertexArray(tableVAO);
+    glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+}
 
 
 GLuint legsVAO, legsVBO, legsEBO;
@@ -281,6 +306,31 @@ void drawLegs()
 
     Mat4 model = Mat4::identity();
     model = Mat4::translate(model, -1.5f, 0.0f, -1.0f); // Move legs to match table
+
+    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, view.m);
+    glUniformMatrix4fv(projLoc, 1, GL_FALSE, projection.m);
+    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, model.m);
+
+    glUniform3f(lightDirLoc, -0.5f, -1.0f, -0.3f);
+    glUniform3f(lightColorLoc, 1.0f, 1.0f, 1.0f);
+    glUniform3f(objectColorLoc, 0.8f, 0.6f, 0.4f); // Same as tabletop
+
+    glBindVertexArray(legsVAO);
+    glDrawElements(GL_TRIANGLES, 24, GL_UNSIGNED_INT, 0);
+}
+void drawLegs2()
+{
+    glUseProgram(shaderProgram);
+
+    GLuint viewLoc = glGetUniformLocation(shaderProgram, "view");
+    GLuint projLoc = glGetUniformLocation(shaderProgram, "projection");
+    GLuint modelLoc = glGetUniformLocation(shaderProgram, "model");
+    GLuint lightDirLoc = glGetUniformLocation(shaderProgram, "lightDir");
+    GLuint lightColorLoc = glGetUniformLocation(shaderProgram, "lightColor");
+    GLuint objectColorLoc = glGetUniformLocation(shaderProgram, "objectColor");
+
+    Mat4 model = Mat4::identity();
+    model = Mat4::translate(model, 1.5f, 0.0f, -1.0f); // Move legs to match table
 
     glUniformMatrix4fv(viewLoc, 1, GL_FALSE, view.m);
     glUniformMatrix4fv(projLoc, 1, GL_FALSE, projection.m);
@@ -400,7 +450,7 @@ void drawGround()
 
     glUniform3f(lightDirLoc, -0.5f, -1.0f, -0.3f);
     glUniform3f(lightColorLoc, 1.0f, 1.0f, 1.0f);
-    glUniform3f(objectColorLoc, 0.4f, 0.3f, 0.2f); // Brownish floor color
+    glUniform3f(objectColorLoc, 0.1f, 0.1f, 0.1f); 
 
     glBindVertexArray(groundVAO);
     glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
@@ -502,6 +552,7 @@ void setupSkybox()
     glBindVertexArray(skyboxVAO);
     glBindBuffer(GL_ARRAY_BUFFER, skyboxVBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), &skyboxVertices, GL_STATIC_DRAW);
+
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
 
@@ -537,37 +588,6 @@ void drawSkybox()
 }
 
 ModelLoader modelLoader;
-Mesh lampMesh;
-GLuint lampShaderProgram;
-float lampScale = 0.3f;
-
-
-void setupLamp()
-{
-    lampMesh = modelLoader.loadModel("models/det3FBX.fbx", "textures/Diffuse.jpg");
-    lampShaderProgram = createShaderProgram("lamp_vertex.glsl", "fragment_shader_tex.glsl");
-}
-
-void drawLamp()
-{
-    glUseProgram(lampShaderProgram);
-
-    GLuint modelLoc = glGetUniformLocation(lampShaderProgram, "model");
-    GLuint textureLoc = glGetUniformLocation(lampShaderProgram, "lampTexture");
-
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, lampMesh.textureID);
-    glUniform1i(textureLoc, 0);
-
-    Mat4 model = Mat4::identity();
-    model = Mat4::translate(model, 0.5f, TABLE_HEIGHT, 0.2f);
-    model = Mat4::scale(model, 0.3f, 0.3f, 0.3f); // Scale the lamp
-
-    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, model.m);
-
-    glBindVertexArray(lampMesh.VAO);
-    glDrawElements(GL_TRIANGLES, lampMesh.indices.size(), GL_UNSIGNED_INT, 0);
-}
 
 GLuint ballVAO, ballVBO, ballEBO;
 GLuint ballShaderProgram;
@@ -654,6 +674,7 @@ void drawBall()
     GLuint viewLoc = glGetUniformLocation(ballShaderProgram, "view");
     GLuint projLoc = glGetUniformLocation(ballShaderProgram, "projection");
     GLuint cameraPosLoc = glGetUniformLocation(ballShaderProgram, "cameraPos");
+    GLuint colorLoc = glGetUniformLocation(ballShaderProgram, "objectColor");
 
     Mat4 model = Mat4::identity();
     model = Mat4::translate(model, -1.0f, 0.5f, 0.5f);
@@ -663,14 +684,44 @@ void drawBall()
     glUniformMatrix4fv(projLoc, 1, GL_FALSE, projection.m);
     
     float eyeX = 0.0f;
-    float eyeY = 1.2f;  // Lowered the camera to 1.2 instead of 2.0
-    float eyeZ = 4.5f;  // Moved slightly closer to the table
+    float eyeY = 1.2f;  
+    float eyeZ = 4.5f;  
 
-    glUniform3f(cameraPosLoc, eyeX, eyeY, eyeZ); // Pass camera position
+    glUniform3f(cameraPosLoc, eyeX, eyeY, eyeZ); 
 
+    glUniform3f(colorLoc, 1.0f, 0.0f, 0.0f);
     glBindVertexArray(ballVAO);
     glDrawElements(GL_TRIANGLES, 288, GL_UNSIGNED_INT, 0);
 }
+
+void drawBall2()
+{
+    glUseProgram(ballShaderProgram);
+
+    GLuint modelLoc = glGetUniformLocation(ballShaderProgram, "model");
+    GLuint viewLoc = glGetUniformLocation(ballShaderProgram, "view");
+    GLuint projLoc = glGetUniformLocation(ballShaderProgram, "projection");
+    GLuint cameraPosLoc = glGetUniformLocation(ballShaderProgram, "cameraPos");
+    GLuint colorLoc = glGetUniformLocation(ballShaderProgram, "objectColor");
+
+    Mat4 model = Mat4::identity();
+    model = Mat4::translate(model, 1.0f, 0.5f, 0.5f);
+
+    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, model.m);
+    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, view.m);
+    glUniformMatrix4fv(projLoc, 1, GL_FALSE, projection.m);
+
+    float eyeX = 0.0f;
+    float eyeY = 1.2f;  
+    float eyeZ = 4.5f; 
+
+    glUniform3f(cameraPosLoc, eyeX, eyeY, eyeZ);
+
+    glUniform3f(colorLoc, 0.0f, 0.0f, 1.0f);
+    glBindVertexArray(ballVAO);
+    glDrawElements(GL_TRIANGLES, 288, GL_UNSIGNED_INT, 0);
+}
+
 
 const float WALL_WIDTH = 10.0f;
 const float WALL_HEIGHT = 5.0f;
@@ -682,7 +733,7 @@ GLuint wallVAO, wallVBO, wallEBO;
 
 void setupWall()
 {
-    float hw = WALL_WIDTH * 0.5f;
+    float hw = WALL_WIDTH * 1.0f;
     float hh = WALL_HEIGHT * 0.5f;
     float ht = WALL_THICKNESS * 0.5f;
     float hw_win = WINDOW_WIDTH * 1.5f;
@@ -774,15 +825,16 @@ void drawWall()
 
 
 
-
 void drawScene()
 {
     drawSkybox();
     drawGround();
     drawTable();
     drawLegs();
-    drawLamp();
+    drawTable2();
+    drawLegs2();
     drawBall();
+    drawBall2();
     drawWall();
 }
 
@@ -795,7 +847,7 @@ int main()
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    GLFWwindow* window = glfwCreateWindow(1080, 720, "3D Scene", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(1920, 1080, "3D Scene", NULL, NULL);
     if (!window)
     {
         glfwTerminate();
@@ -806,7 +858,7 @@ int main()
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
         return -1;
 
-    glViewport(0, 0, 1080, 720);
+    glViewport(0, 0, 1920, 1080);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     glEnable(GL_DEPTH_TEST);
 
@@ -817,13 +869,12 @@ int main()
     setupTable();
     setupLegs();
     setupGround();
-    setupLamp();
     setupBall();
     setupWall();
     setupSkybox();
 
     view = setupCamera();
-    projection = Mat4::perspective(3.14159f / 4.0f, 1080.0f / 720.0f, 0.1f, 100.0f);
+    projection = Mat4::perspective(3.14159f / 4.0f, 1920.0f / 1080.0f, 0.1f, 100.0f);
 
     while (!glfwWindowShouldClose(window))
     {
