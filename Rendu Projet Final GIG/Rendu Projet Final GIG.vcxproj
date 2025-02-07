@@ -251,6 +251,8 @@
     <None Include="models\Table_lamp.FBX" />
     <None Include="skybox_fragment.glsl" />
     <None Include="skybox_vertex.glsl" />
+    <None Include="texture_fragment_shader.glsl" />
+    <None Include="texture_vertex_shader.glsl" />
     <None Include="vertex_shader.glsl" />
   </ItemGroup>
   <ItemGroup>
@@ -261,6 +263,7 @@
     <Image Include="textures\posx.jpg" />
     <Image Include="textures\posy.jpg" />
     <Image Include="textures\posz.jpg" />
+    <Image Include="textures\wall.jpg" />
   </ItemGroup>
   <ItemGroup>
     <Library Include="dependencies\lib\assimp-vc143-mt.lib" />

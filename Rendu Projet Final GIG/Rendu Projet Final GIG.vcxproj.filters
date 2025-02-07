@@ -340,6 +340,8 @@
     <None Include="assimp-vc143-mt.dll" />
     <None Include="ball_vertex.glsl" />
     <None Include="ball_fragment.glsl" />
+    <None Include="texture_vertex_shader.glsl" />
+    <None Include="texture_fragment_shader.glsl" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="textures\negx.jpg">
@@ -361,6 +363,9 @@
       <Filter>Resource Files</Filter>
     </Image>
     <Image Include="textures\Diffuse.jpg">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="textures\wall.jpg">
       <Filter>Resource Files</Filter>
     </Image>
   </ItemGroup>

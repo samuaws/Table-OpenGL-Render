@@ -59,11 +59,11 @@ GLuint createShaderProgram(const char* vertexPath, const char* fragmentPath)
 Mat4 setupCamera()
 {
     float eyeX = 0.0f;
-    float eyeY = 1.2f;  // Lowered the camera to 1.2 instead of 2.0
-    float eyeZ = 4.5f;  // Moved slightly closer to the table
+    float eyeY = 1.2f;  
+    float eyeZ = 4.5f;  
 
     float centerX = 0.0f;
-    float centerY = 0.8f;  //  Looking slightly lower
+    float centerY = 0.8f; 
     float centerZ = 0.0f;
 
     float upX = 0.0f;
@@ -182,7 +182,7 @@ void drawTable()
     GLuint objectColorLoc = glGetUniformLocation(shaderProgram, "objectColor");
 
     Mat4 model = Mat4::identity();
-    model = Mat4::translate(model, -1.5f, 0.0f, -1.0f); // Move table to the right
+    model = Mat4::translate(model, -1.5f, 0.0f, -1.0f); 
 
     glUniformMatrix4fv(viewLoc, 1, GL_FALSE, view.m);
     glUniformMatrix4fv(projLoc, 1, GL_FALSE, projection.m);
@@ -305,7 +305,7 @@ void drawLegs()
     GLuint objectColorLoc = glGetUniformLocation(shaderProgram, "objectColor");
 
     Mat4 model = Mat4::identity();
-    model = Mat4::translate(model, -1.5f, 0.0f, -1.0f); // Move legs to match table
+    model = Mat4::translate(model, -1.5f, 0.0f, -1.0f); 
 
     glUniformMatrix4fv(viewLoc, 1, GL_FALSE, view.m);
     glUniformMatrix4fv(projLoc, 1, GL_FALSE, projection.m);
@@ -313,7 +313,7 @@ void drawLegs()
 
     glUniform3f(lightDirLoc, -0.5f, -1.0f, -0.3f);
     glUniform3f(lightColorLoc, 1.0f, 1.0f, 1.0f);
-    glUniform3f(objectColorLoc, 0.8f, 0.6f, 0.4f); // Same as tabletop
+    glUniform3f(objectColorLoc, 0.8f, 0.6f, 0.4f);
 
     glBindVertexArray(legsVAO);
     glDrawElements(GL_TRIANGLES, 24, GL_UNSIGNED_INT, 0);
@@ -330,7 +330,7 @@ void drawLegs2()
     GLuint objectColorLoc = glGetUniformLocation(shaderProgram, "objectColor");
 
     Mat4 model = Mat4::identity();
-    model = Mat4::translate(model, 1.5f, 0.0f, -1.0f); // Move legs to match table
+    model = Mat4::translate(model, 1.5f, 0.0f, -1.0f); 
 
     glUniformMatrix4fv(viewLoc, 1, GL_FALSE, view.m);
     glUniformMatrix4fv(projLoc, 1, GL_FALSE, projection.m);
@@ -338,7 +338,7 @@ void drawLegs2()
 
     glUniform3f(lightDirLoc, -0.5f, -1.0f, -0.3f);
     glUniform3f(lightColorLoc, 1.0f, 1.0f, 1.0f);
-    glUniform3f(objectColorLoc, 0.8f, 0.6f, 0.4f); // Same as tabletop
+    glUniform3f(objectColorLoc, 0.8f, 0.6f, 0.4f); 
 
     glBindVertexArray(legsVAO);
     glDrawElements(GL_TRIANGLES, 24, GL_UNSIGNED_INT, 0);
@@ -758,7 +758,7 @@ void setupWall()
         -hw_win, -hh_win, ht,  0.0f, 0.0f, 1.0f,
         hw_win, -hh_win, ht,  0.0f, 0.0f, 1.0f,
 
-        // New Single Top Part (covers everything above the window)
+        // New Single Top Part
         -hw, hh_win, ht,  0.0f, 0.0f, 1.0f,
         hw, hh_win, ht,  0.0f, 0.0f, 1.0f,
         -hw, hh, ht,  0.0f, 0.0f, 1.0f,
@@ -807,7 +807,7 @@ void drawWall()
 
 
     Mat4 model = Mat4::identity();
-    model = Mat4::translate(model, 0.0f, WALL_HEIGHT * 0.5f - 1.0f, -2.5f); // Position the wall
+    model = Mat4::translate(model, 0.0f, WALL_HEIGHT * 0.5f - 1.0f, -2.5f); 
 
 
     glUniformMatrix4fv(viewLoc, 1, GL_FALSE, view.m);
@@ -816,7 +816,7 @@ void drawWall()
 
     glUniform3f(lightDirLoc, -0.5f, -1.0f, -0.3f);
     glUniform3f(lightColorLoc, 1.0f, 1.0f, 1.0f);
-    glUniform3f(objectColorLoc, 0.4f, 0.3f, 0.2f); // Brownish floor color
+    glUniform3f(objectColorLoc, 0.4f, 0.3f, 0.2f); 
 
     glBindVertexArray(wallVAO);
     glDrawElements(GL_TRIANGLES, 24, GL_UNSIGNED_INT, 0);
